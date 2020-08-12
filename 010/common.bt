@@ -1,0 +1,88 @@
+#ifndef COMMON_H
+#define COMMON_H
+
+typedef enum <UINT16>
+{
+    InvalidImageType = 0,
+    OneBL = 1,
+    PlutonRuntime = 2,
+    WifiFirmware = 3,
+    SecurityMonitor = 4,
+    NormalWorldLoader = 5,
+    NormalWorldDTB = 6,
+    NormalWorldKernel = 7,
+    RootFs = 8,
+    Services = 9,
+    Applications = 10, // 0x000A
+    FirmwareConfig = 13, // 0x000D
+    BootManifest = 16, // 0x0010
+    NormalWorldFileSystem = 17, // 0x0011
+    TrustedKeystore = 19, // 0x0013
+    Policy = 20, // 0x0014
+    CustomerBoardConfig = 21, // 0x0015
+    UpdateCertStore = 22, // 0x0016
+    BaseSystemUpdateManifest = 23, // 0x0017
+    FirmwareUpdateManifest = 24, // 0x0018
+    CustomerUpdateManifest = 25, // 0x0019
+    RecoveryManifest = 26, // 0x001A
+    ManifestSet = 27, // 0x001B
+    Other = 28, // 0x001C
+} ImageType <read=ReadImageType>;
+
+string ReadImageType(ImageType image_type)
+{
+    local string s;
+
+    switch (image_type) {
+        case 0:  s = "invalid image type"; break;
+        case 1:  s = "one bl"; break;
+        case 2:  s = "pluton runtime"; break;
+        case 3:  s = "wi-fi firmware"; break;
+        case 4:  s = "security monitor"; break;
+        case 5:  s = "normal world loader"; break;
+        case 6:  s = "normal world dtb"; break;
+        case 7:  s = "normal world kernel"; break;
+        case 8:  s = "root fs"; break;
+        case 9:  s = "services"; break;
+        case 10: s = "applications"; break;
+        case 13: s = "firmware config"; break;
+        case 16: s = "boot manifest"; break;
+        case 17: s = "normal world file system"; break;
+        case 19: s = "trusted keystore"; break;
+        case 20: s = "policy"; break;
+        case 21: s = "customer board config"; break;
+        case 22: s = "update cert store"; break;
+        case 23: s = "base system update manifest"; break;
+        case 24: s = "firmware update manifest"; break;
+        case 25: s = "customer update manifest"; break;
+        case 26: s = "recovery manifest"; break;
+        case 27: s = "manifest set"; break;
+        case 28: s = "other"; break;
+    }
+
+    return s;
+}
+
+typedef enum <UINT32>
+{
+    IdentityTypeNone,
+    SecureWorldRuntime,
+    OSRuntime,
+    ApplicationRuntime,
+} IdentityType <read=ReadIdentityType>;
+
+string ReadIdentityType(IdentityType id_type)
+{
+    local string s;
+
+    switch (id_type) {
+        case 0: s = "none"; break;
+        case 1: s = "secure world runtime"; break;
+        case 2: s = "OS runtime"; break;
+        case 3: s = "application runtime"; break;
+    }
+
+    return s;
+}
+
+#endif

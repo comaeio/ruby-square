@@ -1,0 +1,135 @@
+// Azure Sphere Extensible Metadata format.
+// '$SDK_ROOT/Tools/image_metadata.dll' contains the format parsing code.
+// Used in recovery image files, see 'azsphere device recover --help'.
+
+#include "common.bt"
+
+LittleEndian();
+
+// Types.
+
+struct ImageMetadataHeader
+{
+    UINT32 MagicValue <format=hex>;
+    UINT32 SectionCount <format=hex>;
+};
+
+local UINT32 expected_magic = 0x4d345834;  // 4X4M
+
+enum <USHORT> MetadataSectionId
+{
+    None = 0,
+    Debug = 16964, // 0x4244
+    LegacyABIDepends = 17473, // 0x4441
+    Identity = 17481, // 0x4449
+    ABIDepends = 17486, // 0x444E
+    Legacy = 18252, // 0x474C
+    Signature = 18259, // 0x4753
+    Compression = 19779, // 0x4D43
+    RequiredFlashOffset = 20306, // 0x4F52
+    LegacyABIProvides = 20545, // 0x5041
+    ABIProvides = 20558, // 0x504E
+    TemporaryImage = 20564, // 0x5054
+    Revocation = 22098, // 0x5652
+};
+
+struct ImageMetadataSectionHeader
+{
+    MetadataSectionId SectionId;
+    ushort DataLength <format=hex>;
+};
+
+struct IdentityMetadataSection
+{
+    ImageType Type;
+    USHORT reserved <format=hex>;
+    UBYTE ComponentUid[16] <format=hex>;
+    UBYTE ImageUid[16] <format=hex>;
+    // Methods omitted.
+};
+
+enum <UINT32> SigningType
+{
+    InvalidSigningType,
+    ECDsa256,
+};
+
+struct SignatureMetadataSection  // subclass of ImageMetadataSection
+{
+    UBYTE SigningCertThumbprint[20] <format=hex>;
+    SigningType Type;
+};
+
+struct DebugMetadataSection  // subclass of ImageMetadataSection
+{
+    UINT32 BuildDateLow <format=hex>;
+    UINT32 BuildDateHigh <format=hex>;
+    CHAR Name[32];
+    // Methods omitted.
+};
+
+struct MetadataIdentity
+{
+    UINT32 Version;
+    IdentityType Type;
+};
+
+struct ABIProvidesMetadataSection
+{
+    UINT32 VersionCount;
+    MetadataIdentity Versions[VersionCount];
+};
+
+struct ABIDependsMetadataSection
+{
+    UINT32 VersionCount;
+    MetadataIdentity Versions[VersionCount];
+};
+
+struct RevocationMetadataSection
+{
+    UINT32 SecurityVersionNumber;
+};
+
+int64 FindLast(UINT32 value)
+{
+    local TFindResults results = FindAll(value);
+
+    return results.start[results.count - 1];
+}
+
+
+// Parsing.
+
+FSeek(FindLast(expected_magic));  // find magic
+
+// XXX: There's also 'ParseLegacyMetadata'.
+ImageMetadataHeader hdr;
+
+local int section_index;
+for (section_index = 0; section_index < hdr.SectionCount; ++section_index) {
+    ImageMetadataSectionHeader section_hdr;
+
+    if (section_hdr.SectionId == Identity) {
+        IdentityMetadataSection identity_section;
+
+    } else if (section_hdr.SectionId == Signature) {
+        SignatureMetadataSection signature_section;
+
+    } else if (section_hdr.SectionId == Debug) {
+        DebugMetadataSection debug_section;
+
+    } else if (section_hdr.SectionId == ABIProvides) {
+        ABIProvidesMetadataSection abi_provides_section;
+
+    } else if (section_hdr.SectionId == ABIDepends) {
+        ABIDependsMetadataSection abi_depends_section;
+
+    } else if (section_hdr.SectionId == Revocation) {
+        RevocationMetadataSection revocation_section;
+
+    // XXX: Parse more sections here.
+    } else {
+       Printf("Unknown section: 0x%hx\n", section_hdr.SectionId);
+    }
+}

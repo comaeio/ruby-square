@@ -1,0 +1,21 @@
+# AF_AZSPIO support.
+
+include <linux/socket.h>
+include <linux/net.h>
+include <uapi/linux/azspio.h>
+
+resource sock_azspio[sock]
+
+socket$azspio(domain const[AF_AZSPIO], type const[0x80002], proto const[0]) sock_azspio
+
+bind$azspio(fd sock_azspio, addr ptr[in, sockaddr_azspio], addrlen len[addr])
+
+connect$azspio(fd sock_azspio, addr ptr[in, sockaddr_azspio], addrlen len[addr], flags const[0])
+
+getsockname$azspio(fd sock_azspio, addr ptr[in, sockaddr_azspio], addrlen len[addr], peer const[0])
+
+sockaddr_azspio {
+        sa_family       const[AF_AZSPIO, int16]
+        sa_port         const[0, int16]
+        sa_component_id array[const[0x41, int8], 16]
+}

@@ -1,0 +1,162 @@
+// Azure Sphere Image Manifest format.
+// '$SDK_ROOT/Tools/image_manifest.dll' contains the format parsing code.
+// Used in recovery image files, see 'azsphere device recover --help'.
+
+#include "common.bt"
+
+struct ManifestHeader  // V3
+{
+    UINT16 Version <format=hex>;
+    UINT16 ImageCount;
+    UINT16 ManifestHeaderSize <format=hex>;
+    UINT16 ManifestEntrySize <format=hex>;
+    UINT64 BuildDate <format=hex>;  // note this is serialized as U8
+};
+
+struct ManifestIdentity  // V3
+{
+    UINT32 Version <format=hex>;
+    IdentityType Type;
+};
+
+typedef struct {
+    UINT32 Data1 <format=hex>;
+    UINT16 Data2 <format=hex>;
+    UINT16 Data3 <format=hex>;
+    UBYTE Data4[8] <format=hex>;
+} Guid <read=ReadGuid>;
+
+string ReadGuid(Guid &guid)
+{
+    local string s;
+
+    SPrintf(s,
+        "%08x%04x%04x%02x%02x%02x%02x%02x%02x%02x%02x",
+        guid.Data1,
+        guid.Data2,
+        guid.Data3,
+        guid.Data4[0],
+        guid.Data4[1],
+        guid.Data4[2],
+        guid.Data4[3],
+        guid.Data4[4],
+        guid.Data4[5],
+        guid.Data4[6],
+        guid.Data4[7]);
+
+    return s;
+}
+
+typedef enum <UINT16>
+{
+    Invalid = 0,
+    Firmware = 1,
+    Backups = 2,
+    Applications_ = 4,
+    LogStorage = 5,
+    NwConfig = 6,
+    BootloaderOne = 7,
+    BootloaderOneBackup = 8,
+    LocatorTable = 9,
+    LocatorTableBackup = 10, // 0x000A
+    BlockHashes = 11, // 0x000B
+    BlockHashesBackup = 12, // 0x000C
+    BootManifest_ = 13, // 0x000D
+    BootManifestBackup = 14, // 0x000E
+    // LastValidPhysicalPartition = 15, // 0x000F
+    TelemetryStorage = 15, // 0x000F
+    MaxPhysicalLayout = 16383, // 0x3FFF
+    EcRuntimeProtectedRange = 16384, // 0x4000
+    MaxVirtualLayout = 65535, // 0xFFFF
+} PartitionType <read=ReadPartitionType>;
+
+string ReadPartitionType(PartitionType part_type)
+{
+    local string s;
+
+    switch (part_type) {
+        case 0:     s = "invalid"; break;
+        case 1:     s = "firmware"; break;
+        case 2:     s = "backups"; break;
+        case 4:     s = "applications"; break;
+        case 5:     s = "log storage"; break;
+        case 6:     s = "nw config"; break;
+        case 7:     s = "bootloader one"; break;
+        case 8:     s = "bootloader one backup"; break;
+        case 9:     s = "locator table"; break;
+        case 10:    s = "locator table backup"; break;
+        case 11:    s = "block hashes"; break;
+        case 12:    s = "block hashes backup"; break;
+        case 13:    s = "boot manifest"; break;
+        case 14:    s = "boot manifest backup"; break;
+        // case 15:    s = "last valid physical partition"; break;
+        case 15:    s = "telemetry storage"; break;
+        case 16383: s = "max physical layout"; break;
+        case 16384: s = "ec runtime protected range"; break;
+        case 65535: s = "max virtual layout"; break;
+    }
+
+    return s;
+}
+
+struct ManifestEntry  // V3
+{
+    Guid ImageUid;
+    Guid ComponentUid;
+    ImageType Type <format=hex>;
+    PartitionType PartType <format=hex>;
+    UINT32 ImageFileSize <format=hex>;
+    UINT32 UncompressedImageSize <format=hex>;
+    ManifestIdentity Provides[2];
+    ManifestIdentity DependsOn[2];
+};
+
+
+// Tip: compare 'ManifestHeader.BuildDate' (Unix time) against the 'Linux
+// version' string in one of the binaries, which includes the build date.
+ManifestHeader hdr;
+
+local int image_index;
+local int id_index;
+local int provides_size;
+local int depends_size;
+for (image_index = 0; image_index < hdr.ImageCount; ++image_index) {
+    ManifestEntry entry;
+
+    if (image_index != 0) {
+        Printf("\n");
+    }
+
+    Printf("index: %d\n", image_index);
+    Printf("image uid:               %s\n", ReadGuid(entry.ImageUid));
+    Printf("component uid:           %s\n", ReadGuid(entry.ComponentUid));
+    Printf("type:                    %s\n", ReadImageType(entry.Type));
+    Printf("partition type:          %s\n", ReadPartitionType(entry.PartType));
+    Printf("image file size:         0x%08x\n", entry.ImageFileSize);
+    Printf("uncompressed image size: 0x%08x\n", entry.UncompressedImageSize);
+
+    provides_size = sizeof(entry.Provides)  / sizeof(entry.Provides[0]);
+    depends_size  = sizeof(entry.DependsOn) / sizeof(entry.DependsOn[0]);
+
+    for (id_index = 0; id_index < provides_size; ++id_index) {
+        Printf("provides[%d].version:     0x%08x\n",
+            id_index,
+            entry.Provides[id_index].Version);
+
+        Printf("provides[%d].type:        %s\n",
+             id_index,
+             ReadIdentityType(entry.Provides[id_index].Type));
+    }
+
+    for (id_index = 0; id_index < depends_size; ++id_index) {
+        Printf("depends[%d].version:      0x%08x\n",
+            id_index,
+            entry.DependsOn[id_index].Version);
+
+        Printf("depends[%d].type:         %s\n",
+            id_index,
+            ReadIdentityType(entry.DependsOn[id_index].Type));
+    }
+}
+
+#include "image_metadata.bt"

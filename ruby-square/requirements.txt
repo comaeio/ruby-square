@@ -1,0 +1,4 @@
+python-pytuntap
+pyserial
+requests
+ecdsa
